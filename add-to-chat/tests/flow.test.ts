@@ -280,6 +280,16 @@ describe('the pane', () => {
     expect(w.drawnProps.band).toBeDefined()
   })
 
+  test('/add-to-chat with nothing selected hides a pane in sight and shows it again', async ($, on) => {
+    const w = await start($, on)
+    await runCommand($, w)
+    expect(w.panes.has('add-to-chat')).toBe(true)
+    await runCommand($, w)
+    expect(w.panes.has('add-to-chat')).toBe(false)
+    await runCommand($, w)
+    expect(w.panes.has('add-to-chat')).toBe(true)
+  })
+
   test('/add-to-chat opens the pane, and adds the selection when there is one', async ($, on) => {
     const w = await start($, on)
     await runCommand($, w)

@@ -374,14 +374,21 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // Opens the pane (again), and adds the selection if there is one to add.
+  // Adds the selection if there is one to add, opening the pane; with
+  // nothing to add, shows the pane or hides it.
   on('command.run', { command: 'add-to-chat' }, async ($, e) => {
     if (!e.presentation.isFullscreen) {
       $.ui.toast(NEEDS_FULLSCREEN)
       return {}
     }
-    await openPane($)
+    // Hidden behind another pane's tab or not placed, it is open but unseen: this asks to see it.
+    const isSeen = (await $.ui.panes()).some(p => p.id === PANE_ID && p.isShown && p.isPlaced)
+    if (!isSeen) await openPane($)
     const added = await addSelection($, true)
+    if (isSeen && 'reason' in added && added.reason === 'nothing') {
+      await hidePane($)
+      return {}
+    }
     if ('annotation' in added) $.ui.toast(addedToast(added.annotation.index))
     else if (added.reason === 'pending') $.ui.toast(ALREADY_ADDED)
     return {}

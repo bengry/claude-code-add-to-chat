@@ -1,6 +1,6 @@
 {
   "name": "add-to-chat",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Select text in the fullscreen transcript and attach it, with an optional comment, to your next prompt",
   "author": {
     "name": "FunJim"
