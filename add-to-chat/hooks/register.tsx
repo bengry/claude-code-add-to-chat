@@ -26,7 +26,6 @@ const handled = atom({ plugin: 'add-to-chat', key: 'handled' } as const, null)
 const selectionNote = atom({ plugin: 'add-to-chat', key: 'selectionNote' } as const, null)
 const isPaneOpen = atom({ plugin: 'add-to-chat', key: 'isPaneOpen' } as const, false)
 const isPaneDrawn = atom({ plugin: 'add-to-chat', key: 'isPaneDrawn' } as const, false)
-const isPaneDismissed = atom({ plugin: 'add-to-chat', key: 'isPaneDismissed' } as const, false)
 const paneTab = atom({ plugin: 'add-to-chat', key: 'paneTab' } as const, 1)
 const commentDrafts = atom({ plugin: 'add-to-chat', key: 'commentDrafts' } as const, {})
 const commentSaves = atom({ plugin: 'add-to-chat', key: 'commentSaves' } as const, 0)
@@ -279,15 +278,15 @@ async function dropRecalled($: EngineInterface, only?: Recalled) {
   await editPending($, p => withoutRecalled(p, only))
 }
 
-/** Opens the pane at the person's asking: placed at any width, and no longer dismissed. */
+/** Opens the pane at the person's asking: placed at any width. */
 async function openPane($: EngineInterface) {
   const opened = await $.ui.open({ id: PANE_ID, title: PANE_TITLE, columns: PANE_COLUMNS })
-  await Promise.all([update($, isPaneOpen, () => true), update($, isPaneDismissed, () => false), update($, isPaneDrawn, () => opened.isPlaced)])
+  await Promise.all([update($, isPaneOpen, () => true), update($, isPaneDrawn, () => opened.isPlaced)])
 }
 
-/** Closes the pane at the person's asking, from the count under the prompt: closed until they ask for it again. */
+/** Closes the pane at the person's asking: closed until they ask for it again. */
 async function hidePane($: EngineInterface) {
-  await Promise.all([update($, isPaneOpen, () => false), update($, isPaneDismissed, () => true), update($, isPaneDrawn, () => false)])
+  await Promise.all([update($, isPaneOpen, () => false), update($, isPaneDrawn, () => false)])
   await $.ui.close({ id: PANE_ID })
 }
 
@@ -375,14 +374,21 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // Opens the pane (again), and adds the selection if there is one to add.
+  // Adds the selection if there is one to add, opening the pane; with
+  // nothing to add, shows the pane or hides it.
   on('command.run', { command: 'add-to-chat' }, async ($, e) => {
     if (!e.presentation.isFullscreen) {
       $.ui.toast(NEEDS_FULLSCREEN)
       return {}
     }
-    await openPane($)
+    // Hidden behind another pane's tab or not placed, it is open but unseen: this asks to see it.
+    const isSeen = (await $.ui.panes()).some(p => p.id === PANE_ID && p.isShown && p.isPlaced)
+    if (!isSeen) await openPane($)
     const added = await addSelection($, true)
+    if (isSeen && 'reason' in added && added.reason === 'nothing') {
+      await hidePane($)
+      return {}
+    }
     if ('annotation' in added) $.ui.toast(addedToast(added.annotation.index))
     else if (added.reason === 'pending') $.ui.toast(ALREADY_ADDED)
     return {}
@@ -476,19 +482,6 @@ export const register: Register = on => {
   // they ask for it again with /add-to-chat.
   on('ui.close', { id: PANE_ID }, async ($, e, next) => {
     await update($, isPaneOpen, () => false)
-    if (e.origin.kind === 'person') await update($, isPaneDismissed, () => true)
-    return next(e)
-  })
-
-  // Claude Code keeps its band; add-to-chat draws in its pane, which the
-  // band's first fullscreen drawing opens unless the person closed it. Open
-  // from the start, it never narrows the transcript under a mouse mid-drag.
-  // (Opened unasked, a terminal under 144 columns waits for /add-to-chat.)
-  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.viewport?.isFullscreen === true) {
-      const [isOpen, isDismissed] = await Promise.all([read($, isPaneOpen), read($, isPaneDismissed)])
-      if (!isOpen && !isDismissed) void $.ui.open({ id: PANE_ID, title: PANE_TITLE, columns: PANE_COLUMNS })
-    }
     return next(e)
   })
 

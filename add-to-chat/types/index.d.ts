@@ -52,8 +52,6 @@ declare module 'claude-code' {
       isPaneOpen: boolean
       /** Whether the pane is drawn (open and placed), as the poll last saw: while not, the line under the prompt counts the Annotations. */
       isPaneDrawn: boolean
-      /** The person closed the pane: it stays closed until /add-to-chat. */
-      isPaneDismissed: boolean
       /** The index of the Annotation whose tab the pane shows. */
       paneTab: number
       /**

@@ -156,7 +156,7 @@ describe('the pane', () => {
       await hint.press({ key: 'hint-clip' })
       expect(w.panes.has('add-to-chat')).toBe(false)
       expect((await hint.find({ key: 'hint-clip' }))?.text).toBe('📎 2 annotations · show pane')
-      // Hidden from here, it stays hidden: the band does not open it again.
+      // Hidden from here, it stays hidden: the band does not open it.
       await drawBand($)
       expect(w.panes.has('add-to-chat')).toBe(false)
       await hint.press({ key: 'hint-clip' })
@@ -224,14 +224,22 @@ describe('the pane', () => {
     expect(await shown(pane)).toContain('Nothing added yet.')
   })
 
-  test('the band\'s first fullscreen drawing opens the pane; the main screen does not', async ($, on) => {
+  test('the pane does not open by itself: drawing the band leaves it closed', async ($, on) => {
     const w = await start($, on)
-    await drawBand($, false)
-    expect(w.panes.has('add-to-chat')).toBe(false)
     await drawBand($)
-    expect(w.panes.has('add-to-chat')).toBe(true)
+    expect(w.panes.has('add-to-chat')).toBe(false)
     // The band itself is Claude Code's: add-to-chat draws nothing there.
     expect(w.drawnProps.band).toBeDefined()
+  })
+
+  test('/add-to-chat with nothing selected hides a pane in sight and shows it again', async ($, on) => {
+    const w = await start($, on)
+    await runCommand($, w)
+    expect(w.panes.has('add-to-chat')).toBe(true)
+    await runCommand($, w)
+    expect(w.panes.has('add-to-chat')).toBe(false)
+    await runCommand($, w)
+    expect(w.panes.has('add-to-chat')).toBe(true)
   })
 
   test('/add-to-chat opens the pane, and adds the selection when there is one', async ($, on) => {
